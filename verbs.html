@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conjugaisons - Français</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 16px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; font-size: 40px; margin: 20px 0 10px; font-weight: 900; }
+        .subtitle { text-align: center; opacity: 0.9; margin-bottom: 30px; }
+        .tense-grid { display: grid; gap: 16px; margin: 20px 0; }
+        .tense-btn {
+            padding: 24px;
+            border: none;
+            border-radius: 16px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-align: left;
+            background: rgba(255,255,255,0.9);
+            color: #1f2937;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tense-btn:active { transform: scale(0.95); }
+        .word-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+        .word-column { display: flex; flex-direction: column; gap: 12px; }
+        .word-btn {
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            word-wrap: break-word;
+            line-height: 1.3;
+            transition: opacity 0.2s;
+        }
+        .word-btn:active { opacity: 0.8; }
+        .blue { background: #3b82f6; color: white; }
+        .purple { background: #8b5cf6; color: white; }
+        .blue.selected, .purple.selected { opacity: 0.6; }
+        .blue.matched { background: #93c5fd; color: #1e3a8a; opacity: 0.5; }
+        .purple.matched { background: #c4b5fd; color: #5b21b6; opacity: 0.5; }
+        .header {
+            background: white;
+            color: #1f2937;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+        .stats { display: flex; gap: 8px; margin-top: 12px; }
+        .stat {
+            flex: 1;
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 11px;
+        }
+        .stat-value { font-size: 18px; font-weight: bold; color: #f97316; }
+        .controls { display: flex; gap: 12px; margin-top: 16px; }
+        .control-btn {
+            flex: 1;
+            padding: 14px;
+            background: white;
+            color: #1f2937;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .emoji { font-size: 32px; }
+        .info { font-size: 12px; opacity: 0.8; margin-top: 4px; }
+        .feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 24px 48px;
+            border-radius: 16px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1000;
+            animation: fadeInOut 0.6s;
+        }
+        .feedback.correct { background: #10b981; color: white; }
+        .feedback.wrong { background: #ef4444; color: white; }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app"></div>
+    </div>
+    <script>
+const VERBS = {
+    present: [
+        { f: 'Je suis', e: 'I am' },
+        { f: 'Tu es', e: 'You are' },
+        { f: 'Il/Elle est', e: 'He/She is' },
+        { f: 'Nous sommes', e: 'We are' },
+        { f: 'Vous êtes', e: 'You are' },
+        { f: 'Ils/Elles sont', e: 'They are' },
+        { f: 'J\'ai', e: 'I have' },
+        { f: 'Tu as', e: 'You have' },
+        { f: 'Il/Elle a', e: 'He/She has' },
+        { f: 'Nous avons', e: 'We have' },
+        { f: 'Vous avez', e: 'You have' },
+        { f: 'Ils/Elles ont', e: 'They have' },
+        { f: 'Je fais', e: 'I do' },
+        { f: 'Tu fais', e: 'You do' },
+        { f: 'Il/Elle fait', e: 'He/She does' },
+        { f: 'Nous faisons', e: 'We do' },
+        { f: 'Vous faites', e: 'You do' },
+        { f: 'Ils/Elles font', e: 'They do' },
+        { f: 'Je vais', e: 'I go' },
+        { f: 'Tu vas', e: 'You go' },
+        { f: 'Il/Elle va', e: 'He/She goes' },
+        { f: 'Nous allons', e: 'We go' },
+        { f: 'Vous allez', e: 'You go' },
+        { f: 'Ils/Elles vont', e: 'They go' },
+        { f: 'Je viens', e: 'I come' },
+        { f: 'Tu viens', e: 'You come' },
+        { f: 'Il/Elle vient', e: 'He/She comes' },
+        { f: 'Nous venons', e: 'We come' },
+        { f: 'Vous venez', e: 'You come' },
+        { f: 'Ils/Elles viennent', e: 'They come' },
+        { f: 'Je vois', e: 'I see' },
+        { f: 'Tu vois', e: 'You see' },
+        { f: 'Il/Elle voit', e: 'He/She sees' },
+        { f: 'Nous voyons', e: 'We see' },
+        { f: 'Vous voyez', e: 'You see' },
+        { f: 'Ils/Elles voient', e: 'They see' },
+        { f: 'Je sais', e: 'I know' },
+        { f: 'Tu sais', e: 'You know' },
+        { f: 'Il/Elle sait', e: 'He/She knows' },
+        { f: 'Nous savons', e: 'We know' },
+        { f: 'Vous savez', e: 'You know' },
+        { f: 'Ils/Elles savent', e: 'They know' },
+        { f: 'Je veux', e: 'I want' },
+        { f: 'Tu veux', e: 'You want' },
+        { f: 'Il/Elle veut', e: 'He/She wants' },
+        { f: 'Nous voulons', e: 'We want' },
+        { f: 'Vous voulez', e: 'You want' },
+        { f: 'Ils/Elles veulent', e: 'They want' },
+        { f: 'Je parle', e: 'I speak' },
+        { f: 'Tu parles', e: 'You speak' },
+        { f: 'Il/Elle parle', e: 'He/She speaks' },
+        { f: 'Nous parlons', e: 'We speak' },
+        { f: 'Vous parlez', e: 'You speak' },
+        { f: 'Ils/Elles parlent', e: 'They speak' },
+        { f: 'Je mange', e: 'I eat' },
+        { f: 'Tu manges', e: 'You eat' },
+        { f: 'Il/Elle mange', e: 'He/She eats' },
+        { f: 'Nous mangeons', e: 'We eat' },
+        { f: 'Vous mangez', e: 'You eat' },
+        { f: 'Ils/Elles mangent', e: 'They eat' }
+    ],
+    
+    passe: [
+        { f: 'J\'ai été', e: 'I was' },
+        { f: 'Tu as été', e: 'You were' },
+        { f: 'Il/Elle a été', e: 'He/She was' },
+        { f: 'Nous avons été', e: 'We were' },
+        { f: 'Vous avez été', e: 'You were' },
+        { f: 'Ils/Elles ont été', e: 'They were' },
+        { f: 'J\'ai eu', e: 'I had' },
+        { f: 'Tu as eu', e: 'You had' },
+        { f: 'Il/Elle a eu', e: 'He/She had' },
+        { f: 'Nous avons eu', e: 'We had' },
+        { f: 'Vous avez eu', e: 'You had' },
+        { f: 'Ils/Elles ont eu', e: 'They had' },
+        { f: 'J\'ai fait', e: 'I did' },
+        { f: 'Tu as fait', e: 'You did' },
+        { f: 'Il/Elle a fait', e: 'He/She did' },
+        { f: 'Nous avons fait', e: 'We did' },
+        { f: 'Vous avez fait', e: 'You did' },
+        { f: 'Ils/Elles ont fait', e: 'They did' },
+        { f: 'Je suis allé(e)', e: 'I went' },
+        { f: 'Tu es allé(e)', e: 'You went' },
+        { f: 'Il/Elle est allé(e)', e: 'He/She went' },
+        { f: 'Nous sommes allés', e: 'We went' },
+        { f: 'Vous êtes allés', e: 'You went' },
+        { f: 'Ils/Elles sont allés', e: 'They went' },
+        { f: 'J\'ai parlé', e: 'I spoke' },
+        { f: 'Tu as parlé', e: 'You spoke' },
+        { f: 'Il/Elle a parlé', e: 'He/She spoke' },
+        { f: 'Nous avons parlé', e: 'We spoke' },
+        { f: 'Vous avez parlé', e: 'You spoke' },
+        { f: 'Ils/Elles ont parlé', e: 'They spoke' },
+        { f: 'J\'ai mangé', e: 'I ate' },
+        { f: 'Tu as mangé', e: 'You ate' },
+        { f: 'Il/Elle a mangé', e: 'He/She ate' },
+        { f: 'Nous avons mangé', e: 'We ate' },
+        { f: 'Vous avez mangé', e: 'You ate' },
+        { f: 'Ils/Elles ont mangé', e: 'They ate' }
+    ],
+    
+    imparfait: [
+        { f: 'J\'étais', e: 'I was' },
+        { f: 'Tu étais', e: 'You were' },
+        { f: 'Il/Elle était', e: 'He/She was' },
+        { f: 'Nous étions', e: 'We were' },
+        { f: 'Vous étiez', e: 'You were' },
+        { f: 'Ils/Elles étaient', e: 'They were' },
+        { f: 'J\'avais', e: 'I had' },
+        { f: 'Tu avais', e: 'You had' },
+        { f: 'Il/Elle avait', e: 'He/She had' },
+        { f: 'Nous avions', e: 'We had' },
+        { f: 'Vous aviez', e: 'You had' },
+        { f: 'Ils/Elles avaient', e: 'They had' },
+        { f: 'Je faisais', e: 'I did' },
+        { f: 'Tu faisais', e: 'You did' },
+        { f: 'Il/Elle faisait', e: 'He/She did' },
+        { f: 'Nous faisions', e: 'We did' },
+        { f: 'Vous faisiez', e: 'You did' },
+        { f: 'Ils/Elles faisaient', e: 'They did' },
+        { f: 'J\'allais', e: 'I went' },
+        { f: 'Tu allais', e: 'You went' },
+        { f: 'Il/Elle allait', e: 'He/She went' },
+        { f: 'Nous allions', e: 'We went' },
+        { f: 'Vous alliez', e: 'You went' },
+        { f: 'Ils/Elles allaient', e: 'They went' },
+        { f: 'Je parlais', e: 'I spoke' },
+        { f: 'Tu parlais', e: 'You spoke' },
+        { f: 'Il/Elle parlait', e: 'He/She spoke' },
+        { f: 'Nous parlions', e: 'We spoke' },
+        { f: 'Vous parliez', e: 'You spoke' },
+        { f: 'Ils/Elles parlaient', e: 'They spoke' }
+    ],
+    
+    futur: [
+        { f: 'Je serai', e: 'I will be' },
+        { f: 'Tu seras', e: 'You will be' },
+        { f: 'Il/Elle sera', e: 'He/She will be' },
+        { f: 'Nous serons', e: 'We will be' },
+        { f: 'Vous serez', e: 'You will be' },
+        { f: 'Ils/Elles seront', e: 'They will be' },
+        { f: 'J\'aurai', e: 'I will have' },
+        { f: 'Tu auras', e: 'You will have' },
+        { f: 'Il/Elle aura', e: 'He/She will have' },
+        { f: 'Nous aurons', e: 'We will have' },
+        { f: 'Vous aurez', e: 'You will have' },
+        { f: 'Ils/Elles auront', e: 'They will have' },
+        { f: 'Je ferai', e: 'I will do' },
+        { f: 'Tu feras', e: 'You will do' },
+        { f: 'Il/Elle fera', e: 'He/She will do' },
+        { f: 'Nous ferons', e: 'We will do' },
+        { f: 'Vous ferez', e: 'You will do' },
+        { f: 'Ils/Elles feront', e: 'They will do' },
+        { f: 'J\'irai', e: 'I will go' },
+        { f: 'Tu iras', e: 'You will go' },
+        { f: 'Il/Elle ira', e: 'He/She will go' },
+        { f: 'Nous irons', e: 'We will go' },
+        { f: 'Vous irez', e: 'You will go' },
+        { f: 'Ils/Elles iront', e: 'They will go' },
+        { f: 'Je parlerai', e: 'I will speak' },
+        { f: 'Tu parleras', e: 'You will speak' },
+        { f: 'Il/Elle parlera', e: 'He/She will speak' },
+        { f: 'Nous parlerons', e: 'We will speak' },
+        { f: 'Vous parlerez', e: 'You will speak' },
+        { f: 'Ils/Elles parleront', e: 'They will speak' }
+    ]
+};
+
+const TENSES = [
+    { key: 'present', name: 'Présent', emoji: '📝', info: '60 conjugaisons' },
+    { key: 'passe', name: 'Passé Composé', emoji: '⏮️', info: '36 conjugaisons' },
+    { key: 'imparfait', name: 'Imparfait', emoji: '🔄', info: '30 conjugaisons' },
+    { key: 'futur', name: 'Futur', emoji: '🔮', info: '30 conjugaisons' }
+];
+
+let state = {
+    tense: '',
+    score: 0,
+    matched: 0,
+    streak: 0,
+    round: 0,
+    selected: [],
+    matchedIds: [],
+    currentPairs: [],
+    used: new Set()
+};
+
+function shuffle(arr) {
+    return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function showFeedback(isCorrect) {
+    const feedback = document.createElement('div');
+    feedback.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
+    feedback.textContent = isCorrect ? 'Parfait! ✓' : 'Faux! ✗';
+    document.body.appendChild(feedback);
+    setTimeout(() => feedback.remove(), 600);
+}
+
+function startGame(tense) {
+    state.tense = tense;
+    state.score = 0;
+    state.matched = 0;
+    state.streak = 0;
+    state.round = 0;
+    state.used = new Set();
+    nextRound();
+}
+
+function nextRound() {
+    state.selected = [];
+    state.matchedIds = [];
+    state.round++;
+    
+    const allVerbs = VERBS[state.tense];
+    const available = allVerbs.filter((_, i) => !state.used.has(i));
+    
+    if (available.length < 5) {
+        state.used = new Set();
+    }
+    
+    const pairs = [];
+    const used = new Set(state.used);
+    
+    while (pairs.length < 5 && pairs.length < allVerbs.length) {
+        const idx = Math.floor(Math.random() * allVerbs.length);
+        if (!used.has(idx)) {
+            pairs.push({ ...allVerbs[idx], id: pairs.length });
+            used.add(idx);
+        }
+    }
+    
+    state.used = used;
+    state.currentPairs = pairs;
+    renderGame();
+}
+
+function renderTenseSelect() {
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <h1>⚡ Conjugaisons</h1>
+        <p class="subtitle">Choisissez un temps</p>
+        <div class="tense-grid">
+            ${TENSES.map(t => `
+                <button class="tense-btn" onclick="startGame('${t.key}')">
+                    <div>
+                        <div style="font-size: 22px; font-weight: 900;">${t.name}</div>
+                        <div class="info">${t.info}</div>
+                    </div>
+                    <div class="emoji">${t.emoji}</div>
+                </button>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderGame() {
+    const french = shuffle(state.currentPairs.map(p => ({...p, side: 'fr'})));
+    const english = shuffle(state.currentPairs.map(p => ({...p, side: 'en'})));
+    const tenseName = TENSES.find(t => t.key === state.tense).name;
+    
+    document.getElementById('app').innerHTML = `
+        <button class="back-btn" onclick="renderTenseSelect()">← Changer de Temps</button>
+        
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 20px;">Conjugaisons</h2>
+                    <div style="font-size: 12px; opacity: 0.7;">${tenseName}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 28px; font-weight: 900; color: #f97316;">${state.score}</div>
+                    <div style="font-size: 11px; opacity: 0.7;">points</div>
+                </div>
+            </div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">${state.matched}</div>
+                    <div>Paires</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${state.streak}</div>
+                    <div>Série</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${state.round}</div>
+                    <div>Manche</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="word-grid">
+            <div class="word-column">
+                ${french.map(w => `
+                    <button 
+                        class="word-btn blue ${state.selected.includes('fr'+w.id) ? 'selected' : ''} ${state.matchedIds.includes(w.id) ? 'matched' : ''}"
+                        onclick="selectWord('fr${w.id}', ${w.id})"
+                        ${state.matchedIds.includes(w.id) ? 'disabled' : ''}
+                    >
+                        ${w.f}
+                    </button>
+                `).join('')}
+            </div>
+            <div class="word-column">
+                ${english.map(w => `
+                    <button 
+                        class="word-btn purple ${state.selected.includes('en'+w.id) ? 'selected' : ''} ${state.matchedIds.includes(w.id) ? 'matched' : ''}"
+                        onclick="selectWord('en${w.id}', ${w.id})"
+                        ${state.matchedIds.includes(w.id) ? 'disabled' : ''}
+                    >
+                        ${w.e}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" onclick="nextRound()">Nouveaux Verbes</button>
+            <button class="control-btn" onclick="renderTenseSelect()">Recommencer</button>
+        </div>
+    `;
+}
+
+function selectWord(wordId, pairId) {
+    if (state.selected.includes(wordId) || state.matchedIds.includes(pairId)) return;
+    
+    state.selected.push(wordId);
+    
+    const btn = document.querySelector(`button[onclick="selectWord('${wordId}', ${pairId})"]`);
+    if (btn) btn.classList.add('selected');
+    
+    if (state.selected.length === 2) {
+        const id1 = parseInt(state.selected[0].slice(2));
+        const id2 = parseInt(state.selected[1].slice(2));
+        
+        if (id1 === id2) {
+            showFeedback(true);
+            state.matchedIds.push(pairId);
+            state.score += 15;
+            state.matched += 1;
+            state.streak += 1;
+            
+            state.selected.forEach(id => {
+                const b = document.querySelectorAll(`button[onclick*="${id}"]`)[0];
+                if (b) {
+                    b.classList.remove('selected');
+                    b.classList.add('matched');
+                    b.disabled = true;
+                }
+            });
+            
+            setTimeout(() => {
+                state.selected = [];
+                if (state.matchedIds.length === 5) {
+                    setTimeout(nextRound, 500);
+                }
+            }, 600);
+        } else {
+            showFeedback(false);
+            state.streak = 0;
+            setTimeout(() => {
+                state.selected.forEach(id => {
+                    const b = document.querySelectorAll(`button[onclick*="${id}"]`)[0];
+                    if (b) b.classList.remove('selected');
+                });
+                state.selected = [];
+            }, 600);
+        }
+    }
+}
+
+renderTenseSelect();
+    </script>
+</body>
+</html>
