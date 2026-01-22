@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verbes - Français → Anglais</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 16px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; font-size: 40px; margin: 20px 0 10px; font-weight: 900; }
+        .subtitle { text-align: center; opacity: 0.9; margin-bottom: 30px; }
+        .word-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+        .word-column { display: flex; flex-direction: column; gap: 12px; }
+        .word-btn {
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            word-wrap: break-word;
+            line-height: 1.3;
+            transition: opacity 0.2s;
+        }
+        .word-btn:active { opacity: 0.8; }
+        .blue { background: #3b82f6; color: white; }
+        .purple { background: #8b5cf6; color: white; }
+        .blue.selected, .purple.selected { opacity: 0.6; }
+        .blue.matched { background: #93c5fd; color: #1e3a8a; opacity: 0.5; }
+        .purple.matched { background: #c4b5fd; color: #5b21b6; opacity: 0.5; }
+        .header {
+            background: white;
+            color: #1f2937;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+        .stats { display: flex; gap: 8px; margin-top: 12px; }
+        .stat {
+            flex: 1;
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 11px;
+        }
+        .stat-value { font-size: 18px; font-weight: bold; color: #06b6d4; }
+        .controls { display: flex; gap: 12px; margin-top: 16px; }
+        .control-btn {
+            flex: 1;
+            padding: 14px;
+            background: white;
+            color: #1f2937;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 24px 48px;
+            border-radius: 16px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 1000;
+            animation: fadeInOut 0.6s;
+        }
+        .feedback.correct { background: #10b981; color: white; }
+        .feedback.wrong { background: #ef4444; color: white; }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app"></div>
+    </div>
+    <script>
+const VERBS = [
+    { f: 'Être', e: 'To be' },
+    { f: 'Avoir', e: 'To have' },
+    { f: 'Faire', e: 'To do / To make' },
+    { f: 'Aller', e: 'To go' },
+    { f: 'Venir', e: 'To come' },
+    { f: 'Voir', e: 'To see' },
+    { f: 'Savoir', e: 'To know' },
+    { f: 'Vouloir', e: 'To want' },
+    { f: 'Pouvoir', e: 'To be able / Can' },
+    { f: 'Devoir', e: 'To have to / Must' },
+    { f: 'Dire', e: 'To say / To tell' },
+    { f: 'Prendre', e: 'To take' },
+    { f: 'Donner', e: 'To give' },
+    { f: 'Trouver', e: 'To find' },
+    { f: 'Penser', e: 'To think' },
+    { f: 'Parler', e: 'To speak / To talk' },
+    { f: 'Mettre', e: 'To put' },
+    { f: 'Demander', e: 'To ask' },
+    { f: 'Tenir', e: 'To hold' },
+    { f: 'Sembler', e: 'To seem' },
+    { f: 'Laisser', e: 'To leave / To let' },
+    { f: 'Rester', e: 'To stay / To remain' },
+    { f: 'Devenir', e: 'To become' },
+    { f: 'Tomber', e: 'To fall' },
+    { f: 'Comprendre', e: 'To understand' },
+    { f: 'Croire', e: 'To believe' },
+    { f: 'Suivre', e: 'To follow' },
+    { f: 'Vivre', e: 'To live' },
+    { f: 'Sentir', e: 'To feel / To smell' },
+    { f: 'Regarder', e: 'To look / To watch' },
+    { f: 'Connaître', e: 'To know (person/place)' },
+    { f: 'Arriver', e: 'To arrive' },
+    { f: 'Entrer', e: 'To enter' },
+    { f: 'Sortir', e: 'To go out / To leave' },
+    { f: 'Passer', e: 'To pass / To spend (time)' },
+    { f: 'Porter', e: 'To wear / To carry' },
+    { f: 'Attendre', e: 'To wait' },
+    { f: 'Entendre', e: 'To hear' },
+    { f: 'Répondre', e: 'To answer' },
+    { f: 'Perdre', e: 'To lose' },
+    { f: 'Rendre', e: 'To give back / To return' },
+    { f: 'Aimer', e: 'To love / To like' },
+    { f: 'Travailler', e: 'To work' },
+    { f: 'Commencer', e: 'To start / To begin' },
+    { f: 'Finir', e: 'To finish' },
+    { f: 'Continuer', e: 'To continue' },
+    { f: 'Changer', e: 'To change' },
+    { f: 'Chercher', e: 'To look for / To search' },
+    { f: 'Aider', e: 'To help' },
+    { f: 'Montrer', e: 'To show' },
+    { f: 'Écouter', e: 'To listen' },
+    { f: 'Manger', e: 'To eat' },
+    { f: 'Boire', e: 'To drink' },
+    { f: 'Dormir', e: 'To sleep' },
+    { f: 'Marcher', e: 'To walk' },
+    { f: 'Courir', e: 'To run' },
+    { f: 'Ouvrir', e: 'To open' },
+    { f: 'Fermer', e: 'To close' },
+    { f: 'Apprendre', e: 'To learn' },
+    { f: 'Enseigner', e: 'To teach' },
+    { f: 'Lire', e: 'To read' },
+    { f: 'Écrire', e: 'To write' },
+    { f: 'Acheter', e: 'To buy' },
+    { f: 'Vendre', e: 'To sell' },
+    { f: 'Payer', e: 'To pay' },
+    { f: 'Coûter', e: 'To cost' },
+    { f: 'Jouer', e: 'To play' },
+    { f: 'Gagner', e: 'To win / To earn' },
+    { f: 'Choisir', e: 'To choose' },
+    { f: 'Décider', e: 'To decide' },
+    { f: 'Essayer', e: 'To try' },
+    { f: 'Réussir', e: 'To succeed' },
+    { f: 'Échouer', e: 'To fail' },
+    { f: 'Rire', e: 'To laugh' },
+    { f: 'Pleurer', e: 'To cry' },
+    { f: 'Sourire', e: 'To smile' },
+    { f: 'Crier', e: 'To shout / To scream' },
+    { f: 'Appeler', e: 'To call' },
+    { f: 'Réveiller', e: 'To wake up' },
+    { f: 'Lever', e: 'To raise / To lift' },
+    { f: 'Asseoir', e: 'To sit' },
+    { f: 'Coucher', e: 'To lie down / To go to bed' },
+    { f: 'Habiter', e: 'To live (reside)' },
+    { f: 'Naître', e: 'To be born' },
+    { f: 'Mourir', e: 'To die' },
+    { f: 'Grandir', e: 'To grow' },
+    { f: 'Conduire', e: 'To drive' },
+    { f: 'Voyager', e: 'To travel' },
+    { f: 'Partir', e: 'To leave / To depart' },
+    { f: 'Rencontrer', e: 'To meet' },
+    { f: 'Retrouver', e: 'To find again / To meet up' },
+    { f: 'Reconnaître', e: 'To recognize' },
+    { f: 'Recevoir', e: 'To receive' },
+    { f: 'Offrir', e: 'To offer / To give (gift)' },
+    { f: 'Servir', e: 'To serve' },
+    { f: 'Utiliser', e: 'To use' },
+    { f: 'Construire', e: 'To build' },
+    { f: 'Créer', e: 'To create' },
+    { f: 'Détruire', e: 'To destroy' }
+];
+
+let state = {
+    score: 0,
+    matched: 0,
+    streak: 0,
+    round: 0,
+    selected: [],
+    matchedIds: [],
+    currentPairs: [],
+    used: new Set()
+};
+
+function shuffle(arr) {
+    return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function showFeedback(isCorrect) {
+    const feedback = document.createElement('div');
+    feedback.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
+    feedback.textContent = isCorrect ? 'Parfait! ✓' : 'Faux! ✗';
+    document.body.appendChild(feedback);
+    setTimeout(() => feedback.remove(), 600);
+}
+
+function startGame() {
+    state.score = 0;
+    state.matched = 0;
+    state.streak = 0;
+    state.round = 0;
+    state.used = new Set();
+    nextRound();
+}
+
+function nextRound() {
+    state.selected = [];
+    state.matchedIds = [];
+    state.round++;
+    
+    const available = VERBS.filter((_, i) => !state.used.has(i));
+    
+    if (available.length < 5) {
+        state.used = new Set();
+    }
+    
+    const pairs = [];
+    const used = new Set(state.used);
+    
+    while (pairs.length < 5 && pairs.length < VERBS.length) {
+        const idx = Math.floor(Math.random() * VERBS.length);
+        if (!used.has(idx)) {
+            pairs.push({ ...VERBS[idx], id: pairs.length });
+            used.add(idx);
+        }
+    }
+    
+    state.used = used;
+    state.currentPairs = pairs;
+    renderGame();
+}
+
+function renderGame() {
+    const french = shuffle(state.currentPairs.map(p => ({...p, side: 'fr'})));
+    const english = shuffle(state.currentPairs.map(p => ({...p, side: 'en'})));
+    
+    document.getElementById('app').innerHTML = `
+        <h1>📖 Verbes Infinitifs</h1>
+        <p class="subtitle">Français → Anglais</p>
+        
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 20px;">Verbes</h2>
+                    <div style="font-size: 12px; opacity: 0.7;">Infinitifs</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 28px; font-weight: 900; color: #06b6d4;">${state.score}</div>
+                    <div style="font-size: 11px; opacity: 0.7;">points</div>
+                </div>
+            </div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">${state.matched}</div>
+                    <div>Paires</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${state.streak}</div>
+                    <div>Série</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${state.round}</div>
+                    <div>Manche</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="word-grid">
+            <div class="word-column">
+                ${french.map(w => `
+                    <button 
+                        class="word-btn blue ${state.selected.includes('fr'+w.id) ? 'selected' : ''} ${state.matchedIds.includes(w.id) ? 'matched' : ''}"
+                        onclick="selectWord('fr${w.id}', ${w.id})"
+                        ${state.matchedIds.includes(w.id) ? 'disabled' : ''}
+                    >
+                        ${w.f}
+                    </button>
+                `).join('')}
+            </div>
+            <div class="word-column">
+                ${english.map(w => `
+                    <button 
+                        class="word-btn purple ${state.selected.includes('en'+w.id) ? 'selected' : ''} ${state.matchedIds.includes(w.id) ? 'matched' : ''}"
+                        onclick="selectWord('en${w.id}', ${w.id})"
+                        ${state.matchedIds.includes(w.id) ? 'disabled' : ''}
+                    >
+                        ${w.e}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" onclick="nextRound()">Nouveaux Verbes</button>
+            <button class="control-btn" onclick="startGame()">Recommencer</button>
+        </div>
+    `;
+}
+
+function selectWord(wordId, pairId) {
+    if (state.selected.includes(wordId) || state.matchedIds.includes(pairId)) return;
+    
+    state.selected.push(wordId);
+    
+    const btn = document.querySelector(`button[onclick="selectWord('${wordId}', ${pairId})"]`);
+    if (btn) btn.classList.add('selected');
+    
+    if (state.selected.length === 2) {
+        const id1 = parseInt(state.selected[0].slice(2));
+        const id2 = parseInt(state.selected[1].slice(2));
+        
+        if (id1 === id2) {
+            showFeedback(true);
+            state.matchedIds.push(pairId);
+            state.score += 12;
+            state.matched += 1;
+            state.streak += 1;
+            
+            state.selected.forEach(id => {
+                const b = document.querySelectorAll(`button[onclick*="${id}"]`)[0];
+                if (b) {
+                    b.classList.remove('selected');
+                    b.classList.add('matched');
+                    b.disabled = true;
+                }
+            });
+            
+            setTimeout(() => {
+                state.selected = [];
+                if (state.matchedIds.length === 5) {
+                    setTimeout(nextRound, 500);
+                }
+            }, 600);
+        } else {
+            showFeedback(false);
+            state.streak = 0;
+            setTimeout(() => {
+                state.selected.forEach(id => {
+                    const b = document.querySelectorAll(`button[onclick*="${id}"]`)[0];
+                    if (b) b.classList.remove('selected');
+                });
+                state.selected = [];
+            }, 600);
+        }
+    }
+}
+
+startGame();
+    </script>
+</body>
+</html>
